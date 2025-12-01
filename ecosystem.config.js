@@ -27,7 +27,7 @@ module.exports = {
       watch: false,
       env: {
         ...sharedEnv,
-        PORT: 3001,
+        PORT: 4000,
         // ✅ اینجا توکن مخصوص مازندران تبدیل میشه به BOT_TOKEN
         BOT_TOKEN: process.env.TOKEN_MAZANDARAN,
       },
@@ -41,7 +41,7 @@ module.exports = {
       watch: false,
       env: {
         ...sharedEnv,
-        PORT: 3002,
+        PORT: 4001,
         BOT_TOKEN: process.env.TOKEN_QOM_ARAK, // ✅ توکن قم و اراک
       },
     },
@@ -54,7 +54,7 @@ module.exports = {
       watch: false,
       env: {
         ...sharedEnv,
-        PORT: 3003,
+        PORT: 4002,
         BOT_TOKEN: process.env.TOKEN_SHIRAZ_ISFAHAN, // ✅ توکن شیراز و اصفهان
       },
     },
@@ -67,7 +67,7 @@ module.exports = {
       watch: false,
       env: {
         ...sharedEnv,
-        PORT: 3004,
+        PORT: 4003,
         BOT_TOKEN: process.env.TOKEN_TEHRAN_SEMNAN, // ✅ توکن تهران و سمنان
       },
     },
@@ -80,7 +80,7 @@ module.exports = {
       watch: false,
       env: {
         ...sharedEnv,
-        PORT: 3005,
+        PORT: 4004,
         BOT_TOKEN: process.env.TOKEN_YAZD_GILAN, // ✅ توکن یزد و گیلان
       },
     },

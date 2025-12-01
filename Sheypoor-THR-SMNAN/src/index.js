@@ -7,7 +7,7 @@ const config = require("./config/config");
 const redisManager = require("./services/db");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4003;
 
 const PROVINCES = config.TARGET_LOCATIONS;
 const DELAY_PER_PROVINCE = config.SCRAPING_DELAY_PER_PROVINCE_MS || 15000;
