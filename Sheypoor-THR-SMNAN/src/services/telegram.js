@@ -3,7 +3,7 @@ const fs = require("fs"); // 🆕 fs اضافه شد
 const path = require("path"); // 🆕 path اضافه شد
 require("dotenv").config();
 
-const BOT_TOKEN = process.env.TOKEN_SHIRAZ_ISFAHAN;
+const BOT_TOKEN = process.env.TOKEN_TEHRAN_SEMNAN;
 
 class TelegramService {
   /** @type {Telegraf | null} */

@@ -19,9 +19,9 @@ const sharedEnv = {
 module.exports = {
   apps: [
     {
-      name: "DIV-MAZANDARAN",
+      name: "SHI-MAZANDARAN",
       script: "src/index.js",
-      cwd: "./Divar-MZNDRN",
+      cwd: "./Sheypoor-MZNDRN",
       instances: 1,
       exec_mode: "fork",
       watch: false,
@@ -33,9 +33,9 @@ module.exports = {
       },
     },
     {
-      name: "DIV-QOM-ARAK",
+      name: "SHI-QOM-ARAK",
       script: "src/index.js",
-      cwd: "./Divar-QOM-ARAK",
+      cwd: "./Sheypoor-QOM-ARAK",
       instances: 1,
       exec_mode: "fork",
       watch: false,
@@ -46,9 +46,9 @@ module.exports = {
       },
     },
     {
-      name: "DIV-SHIRAZ-ISFAHAN",
+      name: "SHI-SHIRAZ-ISFAHAN",
       script: "src/index.js",
-      cwd: "./Divar-SHZ-ISFHN",
+      cwd: "./Sheypoor-SHZ-ISFHN",
       instances: 1,
       exec_mode: "fork",
       watch: false,
@@ -59,9 +59,9 @@ module.exports = {
       },
     },
     {
-      name: "DIV-TEHRAN-SEMNAN",
+      name: "SHI-TEHRAN-SEMNAN",
       script: "src/index.js",
-      cwd: "./Divar-THR-SMNAN",
+      cwd: "./Sheypoor-THR-SMNAN",
       instances: 1,
       exec_mode: "fork",
       watch: false,
@@ -72,9 +72,9 @@ module.exports = {
       },
     },
     {
-      name: "DIV-YAZD-GILAN",
+      name: "SHI-YAZD-GILAN",
       script: "src/index.js",
-      cwd: "./Divar-YAZD-GILAN",
+      cwd: "./Sheypoor-YAZD-GILAN",
       instances: 1,
       exec_mode: "fork",
       watch: false,
