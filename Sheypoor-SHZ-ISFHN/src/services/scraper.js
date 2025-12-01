@@ -5,6 +5,8 @@ const axios = require("axios");
 const { delay, getRandomDelay, fillSheypoorOtp } = require("../utils/helper");
 const telegram = require("./telegram");
 const cheerio = require("cheerio");
+const fs = require("fs");
+const path = require("path");
 
 const COMMON_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36";
@@ -43,7 +45,7 @@ class Scraper {
     }
   }
 
-  async login(siteUrl) {
+  async login(siteUrl, phone) {
     if (!this.browser) await this.initBrowser();
 
     const YOUR_TELEGRAM_USER_ID = +process.env.YOUR_TELEGRAM_USER_ID;
@@ -108,7 +110,8 @@ class Scraper {
       try {
         // 🔥🔥 مرحله جدید: انتخاب شماره تلفن توسط کاربر 🔥🔥
         // مرورگر باز شده، اما قبل از کلیک و تایپ، از کاربر شماره را می‌گیریم
-        console.log("Waiting for user to select phone number via Telegram...");
+        // console.log("Waiting for user to select phone number via Telegram...");
+
         // --- 2.1. کلیک بر روی "حساب من" ---
         await visiblePage.waitForSelector(USER_ICON_SELECTOR, {
           visible: true,
@@ -130,15 +133,14 @@ class Scraper {
           throw new Error("Account link not found using DOM text search.");
         }
 
-        await delay(10000); // کمی صبر برای باز شدن مودال
         // فراخوانی متد askPhoneNumber از آبجکت telegramBot
-        const selectedPhone = await telegram.askPhoneNumber(
-          YOUR_TELEGRAM_USER_ID
-        );
+        // const selectedPhone = await telegram.askPhoneNumber(
+        //   YOUR_TELEGRAM_USER_ID
+        // );
 
-        console.log(
-          `User selected: ${selectedPhone}. Proceeding with login...`
-        );
+        await delay(10000);
+
+        console.log(`User selected: ${phone}. Proceeding with login...`);
 
         // --- 2.2. پر کردن شماره موبایل انتخاب شده ---
         await visiblePage.waitForSelector(PHONE_INPUT_SELECTOR, {
@@ -146,7 +148,7 @@ class Scraper {
         });
 
         // نرمال‌سازی شماره (اگر نیاز است)
-        const normalizedPhone = selectedPhone.trim();
+        const normalizedPhone = phone.trim();
 
         await delay(1000);
         await visiblePage.type(PHONE_INPUT_SELECTOR, normalizedPhone, {
@@ -194,6 +196,31 @@ class Scraper {
           timeout: 20000,
         });
         console.log("✅ Final Sheypoor Login successful.");
+
+        // ============================================================
+        // 💾 ذخیره شماره تلفن فعال در فایل (بخش جدید)
+        // ============================================================
+        try {
+          // مسیر فایل ذخیره سازی (مثلاً در پوشه src یا کنار فایل کانفیگ)
+          const savePath = path.join(__dirname, "../../active_phone.txt");
+
+          // نوشتن شماره در فایل (اگر فایل باشد جایگزین می‌شود، نباشد ساخته می‌شود)
+          fs.writeFileSync(savePath, normalizedPhone, "utf8");
+
+          console.log(`💾 Active phone number saved to: ${savePath}`);
+        } catch (fileErr) {
+          console.error(
+            "❌ Error saving phone number to file:",
+            fileErr.message
+          );
+        }
+        // ============================================================
+
+        // ارسال پیام موفقیت به تلگرام (همراه با چت آیدی)
+        await telegram.sendLog(
+          `✅ ورود موفقیت آمیز بود!\n📱 شماره فعال: ${normalizedPhone}\nبرای تغییر شماره ربات را /start کنید.`,
+          YOUR_TELEGRAM_USER_ID
+        );
 
         // --- 2.5. ذخیره کوکی‌ها و پایان ---
         await saveCookies(visiblePage, siteUrl);

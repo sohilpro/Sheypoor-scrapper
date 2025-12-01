@@ -8,7 +8,7 @@ const getCookieFileName = (url) => {
   // استخراج نام دامین اصلی از URL (مثلاً divar.ir یا sheypoor.com)
   const urlObject = new URL(url);
   const domain = urlObject.hostname.replace("www.", "").replace(/\./g, "_"); // تبدیل . به _ برای نام فایل
-  return path.join(process.cwd(), `cookies_${domain}.json`);
+  return path.join(__dirname, `../../cookies_${domain}.json`);
 };
 
 class CookieManager {

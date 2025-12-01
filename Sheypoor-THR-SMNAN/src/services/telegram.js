@@ -3,7 +3,7 @@ const fs = require("fs"); // 🆕 fs اضافه شد
 const path = require("path"); // 🆕 path اضافه شد
 require("dotenv").config();
 
-const BOT_TOKEN = process.env.TOKEN_TEHRAN_SEMNAN;
+const BOT_TOKEN = process.env.TOKEN_MAZANDARAN;
 
 class TelegramService {
   /** @type {Telegraf | null} */
@@ -98,14 +98,15 @@ class TelegramService {
     }
 
     // 1. خواندن فایل phones.txt
-    const filePath = path.join(__dirname, "../../../phones.txt"); // مسیر فایل را تنظیم کنید
+    // توجه: مسیر را دقیقا همانطور که در سیستم خودت هست تنظیم کن
+    const filePath = path.join(__dirname, "../../../phones.txt");
+
     if (!fs.existsSync(filePath)) {
       await this.sendLog("❌ فایل phones.txt پیدا نشد!", expectedChatId);
       throw new Error("phones.txt not found");
     }
 
     const fileContent = fs.readFileSync(filePath, "utf-8");
-    // جدا کردن خط به خط و حذف فضاهای خالی
     const phoneList = fileContent
       .split("\n")
       .map((line) => line.trim())
@@ -116,11 +117,33 @@ class TelegramService {
       throw new Error("phones.txt is empty");
     }
 
-    // 2. ساخت دکمه‌های شیشه‌ای
-    // هر ردیف 1 دکمه داشته باشد
-    const buttons = phoneList.map((phone) => [
-      Markup.button.callback(`📱 ${phone}`, `NUM_${phone}`),
-    ]);
+    // ============================================================
+    // 🆕 مرحله جدید: پیدا کردن شماره فعال (Active)
+    // ============================================================
+    let activePhone = null;
+    try {
+      // فرض بر این است که فایل در کنار همین اسکریپت ذخیره شده است (طبق کد قبلی)
+      const activePhonePath = path.join(__dirname, "../../active_phone.txt");
+
+      if (fs.existsSync(activePhonePath)) {
+        activePhone = fs.readFileSync(activePhonePath, "utf-8").trim();
+        console.log(`ℹ️ Found active phone: ${activePhone}`);
+      }
+    } catch (e) {
+      console.warn("⚠️ Could not read active_phone.txt (Ignore if first run).");
+    }
+
+    // 2. ساخت دکمه‌های شیشه‌ای با قابلیت نمایش تیک ✅
+    const buttons = phoneList.map((phone) => {
+      let label = `📱 ${phone}`;
+
+      // اگر شماره فعلی برابر با شماره فعال بود
+      if (activePhone && phone === activePhone) {
+        label = `✅ ${phone} (فعال)`;
+      }
+
+      return [Markup.button.callback(label, `NUM_${phone}`)];
+    });
 
     console.log(
       `[Telegram] Asking user ${expectedChatId} to select a phone number...`
@@ -128,7 +151,7 @@ class TelegramService {
 
     await this.bot.telegram.sendMessage(
       expectedChatId,
-      "🤖 **لطفا شماره موبایل مورد نظر برای ورود به تهران سمنان را انتخاب کنید:**",
+      "🤖 **لطفا شماره موبایل مورد نظر را انتخاب کنید:**\n(شماره دارای تیک، هم‌اکنون لاگین است)",
       Markup.inlineKeyboard(buttons)
     );
 
@@ -139,10 +162,8 @@ class TelegramService {
 
       const selectionListener = (ctx) => {
         if (isListenerDone) return;
-        // بررسی اینکه آیا از دکمه‌های ما (callback_query) است یا خیر
         if (!ctx.callbackQuery || !ctx.callbackQuery.data) return;
 
-        // بررسی اینکه آیا همان یوزر ادمین کلیک کرده است
         if (
           ctx.chat?.id.toString() !== expectedChatId.toString() &&
           ctx.from?.id.toString() !== expectedChatId.toString()
@@ -151,28 +172,30 @@ class TelegramService {
 
         const data = ctx.callbackQuery.data;
 
-        // چک کردن پیشوند NUM_
         if (data.startsWith("NUM_")) {
           const selectedPhone = data.replace("NUM_", "");
 
           isListenerDone = true;
           clearTimeout(timeout);
 
-          // ارسال پیام تایید برای کاربر
-          ctx.reply(`✅ شماره ${selectedPhone} انتخاب شد. در حال ورود...`);
+          // یک فیدبک کوچک به کاربر
+          const msg =
+            selectedPhone === activePhone
+              ? `🔄 شماره فعال ${selectedPhone} مجددا انتخاب شد.`
+              : `✅ شماره ${selectedPhone} انتخاب شد. در حال جابجایی اکانت...`;
+
+          ctx.reply(msg);
 
           resolve(selectedPhone);
         }
       };
 
-      // تنظیم تایم‌اوت
       const timeout = setTimeout(() => {
         if (isListenerDone) return;
         isListenerDone = true;
         reject(new Error("Phone selection timed out."));
       }, timeoutMs);
 
-      // گوش دادن به اونت callback_query
       this.bot.on("callback_query", selectionListener);
     });
   }

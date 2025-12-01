@@ -5,9 +5,12 @@ const filter = require("./services/filters");
 const express = require("express");
 const config = require("./config/config");
 const redisManager = require("./services/db");
+const fs = require("fs");
+const path = require("path");
+const { Markup } = require("telegraf");
 
 const app = express();
-const PORT = process.env.PORT || 4003;
+const PORT = process.env.PORT || 4000;
 
 const PROVINCES = config.TARGET_LOCATIONS;
 const DELAY_PER_PROVINCE = config.SCRAPING_DELAY_PER_PROVINCE_MS || 15000;
@@ -20,12 +23,162 @@ PROVINCES.forEach((p) => {
 });
 
 function launchTelegramBot() {
-  if (telegram.isConfigured && telegram.bot) {
+  if (!telegram.bot) return;
+
+  const bot = telegram.bot;
+  const ADMIN_ID = process.env.YOUR_TELEGRAM_USER_ID;
+
+  // ============================================================
+  // 🛠️ تابع کمکی: ساختن کیبورد دکمه‌ها
+  // ============================================================
+  const getMainKeyboard = () => {
+    // مسیر فایل‌ها
+    const phonesPath = path.join(__dirname, "../../phones.txt");
+    const activePhonePath = path.join(__dirname, "../active_phone.txt");
+
+    let phoneList = [];
+    let activePhone = null;
+
+    if (fs.existsSync(phonesPath)) {
+      phoneList = fs
+        .readFileSync(phonesPath, "utf-8")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+    }
+
+    if (fs.existsSync(activePhonePath)) {
+      activePhone = fs.readFileSync(activePhonePath, "utf-8").trim();
+    }
+
+    const buttons = phoneList.map((phone) => {
+      let label = `📱 ${phone}`;
+      if (activePhone && phone === activePhone) {
+        label = `✅ ${phone} (فعال)`;
+      }
+      return [Markup.button.callback(label, `SET_NUM_${phone}`)];
+    });
+
+    buttons.push([
+      Markup.button.callback("🗑️🔴 پاکسازی و ریستارت برنامه", "ACTION_RESTART"),
+    ]);
+
+    return Markup.inlineKeyboard(buttons);
+  };
+
+  // ============================================================
+  // 🛠️ تابع کمکی: عملیات ریستارت
+  // ============================================================
+  const performRestart = async (ctx) => {
+    if (ctx.from.id.toString() !== ADMIN_ID)
+      return ctx.reply("⛔ شما دسترسی ندارید.");
+
     try {
-      telegram.bot.launch();
-      console.log(
-        "✅ Telegram Bot is actively running and listening for updates..."
-      );
+      await ctx.reply("🗑️ در حال پاک‌سازی کوکی‌ها و ریستارت ربات...");
+
+      const filesToDelete = [
+        "cookies_divar_ir.json",
+        "cookies_sheypoor_com.json",
+        // "active_phone.txt", // اگر میخواهید شماره فعال بماند، این خط را کامنت کنید
+      ];
+
+      let deletedCount = 0;
+
+      filesToDelete.forEach((fileName) => {
+        // مسیر فایل را چک کنید (معمولا داخل src است)
+        const filePath = path.join(process.cwd(), fileName);
+
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`🗑️ Deleted: ${filePath}`);
+            deletedCount++;
+          } catch (e) {
+            console.error(`خطا در حذف ${fileName}:`, e);
+          }
+        }
+      });
+
+      const msg =
+        deletedCount > 0
+          ? `✅ ${deletedCount} فایل کوکی پاک شد.\n🔄 در حال ریستارت...`
+          : "ℹ️ کوکی‌ها قبلا پاک شده‌اند.\n🔄 در حال ریستارت...";
+
+      await ctx.reply(msg);
+
+      setTimeout(() => {
+        process.exit(0);
+      }, 1000);
+    } catch (error) {
+      console.error("Error in reset:", error);
+      ctx.reply(`❌ خطا: ${error.message}`);
+    }
+  };
+
+  if (telegram.isConfigured && bot) {
+    try {
+      // 1. هندلر دستور /start
+      bot.start((ctx) => {
+        if (ctx.from.id.toString() !== ADMIN_ID) return;
+        ctx.reply(
+          "👋 سلام ادمین!\nشماره مورد نظر را انتخاب کنید تا لاگین شروع شود:",
+          getMainKeyboard()
+        );
+      });
+
+      // 2. هندلر دستور /restart
+      bot.command("restart", async (ctx) => {
+        await performRestart(ctx);
+      });
+
+      // 3. هندلر دکمه "ریستارت"
+      bot.action("ACTION_RESTART", async (ctx) => {
+        await ctx.answerCbQuery();
+        await performRestart(ctx);
+      });
+
+      // 4. هندلر انتخاب شماره (شروع لاگین)
+      // 4. هندلر انتخاب شماره (ذخیره + پاکسازی + ریستارت)
+      bot.action(/^SET_NUM_(.+)$/, async (ctx) => {
+        if (ctx.from.id.toString() !== ADMIN_ID) return;
+
+        const selectedPhone = ctx.match[1];
+        const activePhonePath = path.join(__dirname, "../active_phone.txt");
+
+        // 1. ذخیره شماره جدید
+        fs.writeFileSync(activePhonePath, selectedPhone, "utf-8");
+        await ctx.answerCbQuery(`شماره ${selectedPhone} ذخیره شد.`);
+
+        // 2. حذف کوکی‌های قدیمی (تا با اکانت قبلی قاطی نشود)
+        const cookiesPath = path.join(
+          __dirname,
+          "../cookies_sheypoor_com.json"
+        ); // یا cookies_divar_ir.json
+        if (fs.existsSync(cookiesPath)) {
+          try {
+            fs.unlinkSync(cookiesPath);
+          } catch (e) {}
+        }
+
+        // 3. اعلام ریستارت به کاربر
+        await ctx.editMessageText(
+          `✅ شماره فعال روی **${selectedPhone}** تنظیم شد.\n🗑️ کوکی‌های قبلی پاک شدند.\n🔄 **برنامه در حال ریستارت است...**\n\n(بعد از بالا آمدن، ربات به صورت خودکار با شماره جدید تلاش برای ورود می‌کند)`,
+          getMainKeyboard() // دکمه‌ها را نگه میداریم تا تیک سبز جابجا شده را ببیند
+        );
+
+        console.log(`♻️ Switching to ${selectedPhone}. Restarting process...`);
+
+        // 4. ریستارت برنامه (PM2 دوباره روشنش می‌کند)
+        setTimeout(() => {
+          process.exit(0);
+        }, 1500);
+      });
+
+      bot.launch();
+      console.log("✅ Telegram Bot is actively running...");
+
+      process.once("SIGINT", () => bot.stop("SIGINT"));
+      process.once("SIGTERM", () => bot.stop("SIGTERM"));
     } catch (err) {
       console.error("❌ Failed to launch Telegram bot:", err.message);
     }
@@ -178,16 +331,41 @@ app.listen(PORT, async () => {
   await scraper.initBrowser();
 
   // Login دیوار و شیپور
-  const [isSheypoorReady] = await Promise.all([
-    // scraper.login(config.DIVAR_URL, config.USER_PHONE, config.USER_PASSWORD),
-    scraper.login(config.SHEYPOOR_URL),
-  ]);
+  // const [isSheypoorReady] = await Promise.all([
+  //   // scraper.login(config.DIVAR_URL, config.USER_PHONE, config.USER_PASSWORD),
+  //   scraper.login(config.SHEYPOOR_URL, config.USER_PHONE, config.USER_PASSWORD),
+  // ]);
 
-  if (!isSheypoorReady) {
-    console.error(
-      "FATAL: Failed to log in to one or both platforms. Please check cookies/manual login."
-    );
-    process.exit(1);
+  // if (!isSheypoorReady) {
+  //   console.error(
+  //     "FATAL: Failed to log in to one or both platforms. Please check cookies/manual login."
+  //   );
+  //   process.exit(1);
+  // }
+
+  // ============================================================
+  // 🔥 لاگین هوشمند بعد از ریستارت 🔥
+  // ============================================================
+  const activePhonePath = path.join(__dirname, "../active_phone.txt"); // مسیر را چک کنید
+  let autoPhone = null;
+
+  // خواندن شماره فعال (اگر وجود داشت)
+  if (fs.existsSync(activePhonePath)) {
+    autoPhone = fs.readFileSync(activePhonePath, "utf-8").trim();
+    console.log(`ℹ️ Found active phone config: ${autoPhone}`);
+  }
+
+  // تلاش برای لاگین (اگر کوکی نباشد، از autoPhone استفاده می‌کند)
+  try {
+    // آدرس سایت را بر اساس پروژه تنظیم کن
+    const siteUrl = config.SHEYPOOR_URL;
+
+    // فراخوانی متد لاگین:
+    // اگر کوکی باشد -> با کوکی می‌رود.
+    // اگر کوکی نباشد (که الان پاک کردیم) -> از autoPhone استفاده می‌کند.
+    await scraper.login(siteUrl, autoPhone, telegram);
+  } catch (e) {
+    console.log("⚠️ Login process finished with warnings.");
   }
 
   await redisManager.connect();
