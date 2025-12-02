@@ -13,23 +13,26 @@ x-bot-config: &bot-config
         memory: 200M
 
 services:
+  # ===================== REDIS SERVICE =====================
   redis:
     image: redis:alpine
     container_name: scraper-redis
     restart: always
     ports:
       - "6379:6379"
+    # ports:           <-- این را کامنت کردم تا ارور Port already in use ندهد
+
   # ===================== SHEYPOOR BOTS =====================
 
   # 1. MAZANDARAN
   sheypoor-mazandaran:
     <<: *bot-config
     container_name: shi-mazandaran
-    # ✅ مسیر صحیح: چون پوشه در روت پروژه است، مستقیم صدایش می‌زنیم
     command: node Sheypoor-MZNDRN/src/index.js
     environment:
       - PORT=4000
       - BOT_TOKEN=${TOKEN_MAZANDARAN}
+      - REDIS_HOST=redis # 👈👈👈 این خط حیاتی است (اضافه شد)
 
   # 2. QOM - ARAK
   sheypoor-qom-arak:
@@ -39,6 +42,7 @@ services:
     environment:
       - PORT=4001
       - BOT_TOKEN=${TOKEN_QOM_ARAK}
+      - REDIS_HOST=redis # 👈 اضافه شد
 
   # 3. SHIRAZ - ISFAHAN
   sheypoor-shiraz-isfahan:
@@ -48,6 +52,7 @@ services:
     environment:
       - PORT=4002
       - BOT_TOKEN=${TOKEN_SHIRAZ_ISFAHAN}
+      - REDIS_HOST=redis # 👈 اضافه شد
 
   # 4. TEHRAN - SEMNAN
   sheypoor-tehran-semnan:
@@ -57,6 +62,7 @@ services:
     environment:
       - PORT=4003
       - BOT_TOKEN=${TOKEN_TEHRAN_SEMNAN}
+      - REDIS_HOST=redis # 👈 اضافه شد
 
   # 5. YAZD - GILAN
   sheypoor-yazd-gilan:
@@ -66,3 +72,4 @@ services:
     environment:
       - PORT=4004
       - BOT_TOKEN=${TOKEN_YAZD_GILAN}
+      - REDIS_HOST=redis # 👈 اضافه شد
