@@ -16,7 +16,7 @@ services:
   # ===================== REDIS SERVICE =====================
   redis:
     image: redis:alpine
-    container_name: scraper-redis
+    container_name: sheypoor-redis
     restart: always
     ports:
       - "6379:6379"
