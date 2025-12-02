@@ -1,4 +1,5 @@
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-extra");
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 const { saveCookies, loadCookies } = require("../utils/cookieManager");
 const config = require("../config/config");
 const axios = require("axios");
@@ -10,8 +11,11 @@ const path = require("path");
 
 const COMMON_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36";
-const MIN_DELAY_MS = 30 * 1000; // 30 ثانیه
-const MAX_DELAY_MS = 75 * 1000; // 75 ثانیه
+const MIN_DELAY_MS = 120 * 1000; // 30 ثانیه
+const MAX_DELAY_MS = 300 * 1000; // 75 ثانیه
+
+const LOGIN_DELAY = 1 * 1000;
+const WAITING_FOR_GOTO = 1.5 * 1000;
 
 // For Divar
 const ACCOUNT_LINK_XPATH = "//a[contains(., 'حساب من')]";
@@ -28,17 +32,21 @@ class Scraper {
   async initBrowser() {
     if (!this.browser) {
       this.browser = await puppeteer.launch({
-        headless: "new",
-        executablePath: "/usr/bin/google-chrome",
+        headless: true,
+        // executablePath: "/usr/bin/google-chrome",
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
-          `--window-size=${1920},${1080}`,
-          "--disable-dev-shm-usage", // ✅ حیاتی برای جلوگیری از کرش رم
+          "--disable-dev-shm-usage",
           "--disable-accelerated-2d-canvas",
           "--disable-gpu",
           "--no-first-run",
           "--no-zygote",
+          "--disable-background-networking",
+          "--disable-background-timer-throttling",
+          "--disable-renderer-backgrounding",
+          "--disable-backgrounding-occluded-windows",
+          `--window-size=1920,1080`,
         ],
       });
       console.log("✅ Browser launched.");
@@ -58,7 +66,7 @@ class Scraper {
     try {
       const loaded = await loadCookies(cookiePage, siteUrl);
       console.log("Loaded cookies =>", loaded);
-
+await delay(LOGIN_DELAY)
       if (loaded) {
         await cookiePage.goto(siteUrl, { waitUntil: "networkidle2" });
 
@@ -86,157 +94,138 @@ class Scraper {
       `❌ Cookie login failed for ${siteUrl}. Starting automated flow.`
     );
 
-    return new Promise(async (resolve) => {
-      const visibleBrowser = await puppeteer.launch({
-        headless: true, // برای دیباگ بهتر false باشد، در پروداکشن true
-        executablePath: "/usr/bin/google-chrome",
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--window-size=1920,1080",
-          "--start-maximized",
-          "--disable-dev-shm-usage",
-          "--disable-accelerated-2d-canvas",
-          "--disable-gpu",
-          "--no-first-run",
-          "--no-zygote",
-        ],
+    const visiblePage = await this.browser.newPage();
+    await visiblePage.setViewport({ width: 1920, height: 1080 });
+    await visiblePage.setUserAgent(COMMON_USER_AGENT);
+    await delay(WAITING_FOR_GOTO);
+    await visiblePage.goto(siteUrl, { waitUntil: "networkidle2" });
+
+    try {
+      // 🔥🔥 مرحله جدید: انتخاب شماره تلفن توسط کاربر 🔥🔥
+      // مرورگر باز شده، اما قبل از کلیک و تایپ، از کاربر شماره را می‌گیریم
+      // console.log("Waiting for user to select phone number via Telegram...");
+
+      // --- 2.1. کلیک بر روی "حساب من" ---
+      await visiblePage.waitForSelector(USER_ICON_SELECTOR, {
+        visible: true,
+        timeout: 10000,
       });
-      const visiblePage = await visibleBrowser.newPage();
-      await visiblePage.setViewport({ width: 1920, height: 1080 });
-      await visiblePage.setUserAgent(COMMON_USER_AGENT);
-      await visiblePage.goto(siteUrl, { waitUntil: "networkidle2" });
 
-      try {
-        // 🔥🔥 مرحله جدید: انتخاب شماره تلفن توسط کاربر 🔥🔥
-        // مرورگر باز شده، اما قبل از کلیک و تایپ، از کاربر شماره را می‌گیریم
-        // console.log("Waiting for user to select phone number via Telegram...");
-
-        // --- 2.1. کلیک بر روی "حساب من" ---
-        await visiblePage.waitForSelector(USER_ICON_SELECTOR, {
-          visible: true,
-          timeout: 10000,
-        });
-
-        const linkFound = await visiblePage.evaluate(() => {
-          const link = Array.from(document.querySelectorAll("a")).find((el) =>
-            el.textContent.includes("حساب من")
-          );
-          if (link) {
-            link.click();
-            return true;
-          }
-          return false;
-        });
-
-        if (!linkFound) {
-          throw new Error("Account link not found using DOM text search.");
+      const linkFound = await visiblePage.evaluate(() => {
+        const link = Array.from(document.querySelectorAll("a")).find((el) =>
+          el.textContent.includes("حساب من")
+        );
+        if (link) {
+          link.click();
+          return true;
         }
+        return false;
+      });
 
-        // فراخوانی متد askPhoneNumber از آبجکت telegramBot
-        // const selectedPhone = await telegram.askPhoneNumber(
-        //   YOUR_TELEGRAM_USER_ID
-        // );
-
-        await delay(10000);
-
-        console.log(`User selected: ${phone}. Proceeding with login...`);
-
-        // --- 2.2. پر کردن شماره موبایل انتخاب شده ---
-        await visiblePage.waitForSelector(PHONE_INPUT_SELECTOR, {
-          timeout: 5000,
-        });
-
-        // نرمال‌سازی شماره (اگر نیاز است)
-        const normalizedPhone = phone.trim();
-
-        await delay(1000);
-        await visiblePage.type(PHONE_INPUT_SELECTOR, normalizedPhone, {
-          delay: 100,
-        });
-        console.log(`✅ Phone number set: ${normalizedPhone}`);
-
-        // 💡 اگر دکمه تاییدی وجود دارد اینجا کلیک کنید، اگر نه که خود شیپور می‌رود مرحله بعد
-
-        // --- 2.3. انتظار برای صفحه OTP و دریافت کد از تلگرام ---
-
-        // انتظار برای کانتینر OTP
-        await visiblePage.waitForSelector(SHEYPOOR_OTP_CONTAINER_SELECTOR, {
-          timeout: 15000,
-        });
-        console.log(
-          "✅ OTP input modal visible. Requesting code via Telegram..."
-        );
-
-        await telegram.sendLog(
-          `کد تایید برای شماره ${normalizedPhone} ارسال شد. لطفا کد 4 رقمی را وارد کنید:`,
-          YOUR_TELEGRAM_USER_ID
-        );
-
-        // 🌟 انتظار برای کد 4 رقمی از تلگرام 🌟
-        const otpCode = await telegram.getOtpCode(YOUR_TELEGRAM_USER_ID, 60000);
-
-        if (otpCode.length !== 4) {
-          throw new Error("Received OTP is not 4 digits.");
-        }
-
-        // 🔥🔥 مرحله جدید: ارسال پیام تایید کد به کاربر 🔥🔥
-        await telegram.sendLog(
-          `✅ کد ۴ رقمی ${otpCode} صحیح است. در حال ورود به سایت...`,
-          YOUR_TELEGRAM_USER_ID
-        );
-
-        // --- 2.4. پر کردن 4 اینپوت OTP ---
-        await fillSheypoorOtp(visiblePage, otpCode);
-        console.log(`✅ OTP typed: ${otpCode}.`);
-
-        // صبر برای ناوبری (ورود موفق)
-        await visiblePage.waitForNavigation({
-          waitUntil: "networkidle2",
-          timeout: 20000,
-        });
-        console.log("✅ Final Sheypoor Login successful.");
-
-        // ============================================================
-        // 💾 ذخیره شماره تلفن فعال در فایل (بخش جدید)
-        // ============================================================
-        try {
-          // مسیر فایل ذخیره سازی (مثلاً در پوشه src یا کنار فایل کانفیگ)
-          const savePath = path.join(__dirname, "../../active_phone.txt");
-
-          // نوشتن شماره در فایل (اگر فایل باشد جایگزین می‌شود، نباشد ساخته می‌شود)
-          fs.writeFileSync(savePath, normalizedPhone, "utf8");
-
-          console.log(`💾 Active phone number saved to: ${savePath}`);
-        } catch (fileErr) {
-          console.error(
-            "❌ Error saving phone number to file:",
-            fileErr.message
-          );
-        }
-        // ============================================================
-
-        // ارسال پیام موفقیت به تلگرام (همراه با چت آیدی)
-        await telegram.sendLog(
-          `✅ ورود موفقیت آمیز بود!\n📱 شماره فعال: ${normalizedPhone}\nبرای تغییر شماره ربات را /start کنید.`,
-          YOUR_TELEGRAM_USER_ID
-        );
-
-        // --- 2.5. ذخیره کوکی‌ها و پایان ---
-        await saveCookies(visiblePage, siteUrl);
-        await visibleBrowser.close();
-        resolve(true);
-      } catch (error) {
-        // --- 3. مدیریت شکست ---
-        console.error(`❌ Sheypoor Automated Login Failed: ${error.message}`);
-
-        // بستن مرورگر فعلی در صورت خطا
-        if (visibleBrowser) await visibleBrowser.close();
-
-        // تلاش مجدد یا واگذاری به لاگین دستی
-        // setTimeout(async () => { ... }, 60000);
+      if (!linkFound) {
+        throw new Error("Account link not found using DOM text search.");
       }
-    });
+
+      // فراخوانی متد askPhoneNumber از آبجکت telegramBot
+      // const selectedPhone = await telegram.askPhoneNumber(
+      //   YOUR_TELEGRAM_USER_ID
+      // );
+
+      await delay(10000);
+
+      console.log(`User selected: ${phone}. Proceeding with login...`);
+
+      // --- 2.2. پر کردن شماره موبایل انتخاب شده ---
+      await visiblePage.waitForSelector(PHONE_INPUT_SELECTOR, {
+        timeout: 5000,
+      });
+
+      // نرمال‌سازی شماره (اگر نیاز است)
+      const normalizedPhone = phone.trim();
+
+      await delay(1000);
+      await visiblePage.type(PHONE_INPUT_SELECTOR, normalizedPhone, {
+        delay: 100,
+      });
+      console.log(`✅ Phone number set: ${normalizedPhone}`);
+
+      // 💡 اگر دکمه تاییدی وجود دارد اینجا کلیک کنید، اگر نه که خود شیپور می‌رود مرحله بعد
+
+      // --- 2.3. انتظار برای صفحه OTP و دریافت کد از تلگرام ---
+
+      // انتظار برای کانتینر OTP
+      await visiblePage.waitForSelector(SHEYPOOR_OTP_CONTAINER_SELECTOR, {
+        timeout: 15000,
+      });
+      console.log(
+        "✅ OTP input modal visible. Requesting code via Telegram..."
+      );
+
+      await telegram.sendLog(
+        `کد تایید برای شماره ${normalizedPhone} ارسال شد. لطفا کد 4 رقمی را وارد کنید:`,
+        YOUR_TELEGRAM_USER_ID
+      );
+
+      // 🌟 انتظار برای کد 4 رقمی از تلگرام 🌟
+      const otpCode = await telegram.getOtpCode(YOUR_TELEGRAM_USER_ID, 60000);
+
+      if (otpCode.length !== 4) {
+        throw new Error("Received OTP is not 4 digits.");
+      }
+
+      // 🔥🔥 مرحله جدید: ارسال پیام تایید کد به کاربر 🔥🔥
+      await telegram.sendLog(
+        `✅ کد ۴ رقمی ${otpCode} صحیح است. در حال ورود به سایت...`,
+        YOUR_TELEGRAM_USER_ID
+      );
+
+      // --- 2.4. پر کردن 4 اینپوت OTP ---
+      await fillSheypoorOtp(visiblePage, otpCode);
+      console.log(`✅ OTP typed: ${otpCode}.`);
+
+      // صبر برای ناوبری (ورود موفق)
+      await visiblePage.waitForNavigation({
+        waitUntil: "networkidle2",
+        timeout: 20000,
+      });
+      console.log("✅ Final Sheypoor Login successful.");
+
+      // ============================================================
+      // 💾 ذخیره شماره تلفن فعال در فایل (بخش جدید)
+      // ============================================================
+      try {
+        // مسیر فایل ذخیره سازی (مثلاً در پوشه src یا کنار فایل کانفیگ)
+        const savePath = path.join(__dirname, "../../active_phone.txt");
+
+        // نوشتن شماره در فایل (اگر فایل باشد جایگزین می‌شود، نباشد ساخته می‌شود)
+        fs.writeFileSync(savePath, normalizedPhone, "utf8");
+
+        console.log(`💾 Active phone number saved to: ${savePath}`);
+      } catch (fileErr) {
+        console.error("❌ Error saving phone number to file:", fileErr.message);
+      }
+      // ============================================================
+
+      // ارسال پیام موفقیت به تلگرام (همراه با چت آیدی)
+      await telegram.sendLog(
+        `✅ ورود موفقیت آمیز بود!\n📱 شماره فعال: ${normalizedPhone}\nبرای تغییر شماره ربات را /start کنید.`,
+        YOUR_TELEGRAM_USER_ID
+      );
+
+      // --- 2.5. ذخیره کوکی‌ها و پایان ---
+      await saveCookies(visiblePage, siteUrl);
+      await visiblePage.close();
+      resolve(true);
+    } catch (error) {
+      // --- 3. مدیریت شکست ---
+      console.error(`❌ Sheypoor Automated Login Failed: ${error.message}`);
+
+      // بستن مرورگر فعلی در صورت خطا
+      if (visiblePage) await visibleBrowser.close();
+
+      // تلاش مجدد یا واگذاری به لاگین دستی
+      // setTimeout(async () => { ... }, 60000);
+    }
   }
 
   async scrapeAds(siteName, searchKeywords = [], location) {
@@ -277,7 +266,7 @@ class Scraper {
           siteName === "divar" ? buildDivarUrl(phrase) : buildDivarUrl(phrase);
 
         console.log(`ℹ️ Navigating to: ${searchUrl}`);
-
+        await delay(WAITING_FOR_GOTO);
         try {
           await page.goto(searchUrl, {
             waitUntil: "domcontentloaded",

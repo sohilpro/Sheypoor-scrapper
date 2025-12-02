@@ -10,7 +10,7 @@ const path = require("path");
 const { Markup } = require("telegraf");
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 4002;
 
 const PROVINCES = config.TARGET_LOCATIONS;
 const DELAY_PER_PROVINCE = config.SCRAPING_DELAY_PER_PROVINCE_MS || 15000;

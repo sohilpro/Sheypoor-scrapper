@@ -3,7 +3,7 @@ module.exports = {
   TARGET_LOCATIONS: [
     {
       name: "گیلان",
-      search_url_param: "gilan-province",
+      search_url_param: "gilan",
       telegram_chat_id: process.env.TELEGRAM_CHAT_ID_GILAN,
     },
     {
