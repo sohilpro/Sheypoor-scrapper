@@ -1,63 +1,62 @@
 version: "3.8"
 
-# تنظیمات مشترک برای جلوگیری از تکرار
-x-common-config: &common-config
+x-bot-config: &bot-config
   build: .
   restart: always
-  # ⚠️ حیاتی: افزایش حجم حافظه اشتراکی برای جلوگیری از کرش کروم
   shm_size: "2gb"
   env_file: .env
-  # محدودیت منابع (مثل max_memory_restart در pm2)
   deploy:
     resources:
       limits:
-        memory: 600M # اگر رم بیشتر شد، کانتینر ریستارت میشه
+        memory: 600M
       reservations:
         memory: 200M
 
 services:
-  # ================= SHEYPOOR BOTS =================
+  # ===================== SHEYPOOR BOTS =====================
+
+  # 1. MAZANDARAN
   sheypoor-mazandaran:
-    <<: *common-config
-    container_name: sheypoor-mazandaran
-    command: node src/index.js
-    working_dir: /usr/src/app/Sheypoor/Sheypoor-MZNDRN
+    <<: *bot-config
+    container_name: shi-mazandaran
+    # ✅ مسیر صحیح: چون پوشه در روت پروژه است، مستقیم صدایش می‌زنیم
+    command: node Sheypoor-MZNDRN/src/index.js
     environment:
-      - PORT=4001
+      - PORT=4000
       - BOT_TOKEN=${TOKEN_MAZANDARAN}
 
+  # 2. QOM - ARAK
   sheypoor-qom-arak:
-    <<: *common-config
-    container_name: sheypoor-qom-arak
-    command: node src/index.js
-    working_dir: /usr/src/app/Sheypoor/Sheypoor-QOM-ARAK
-    environment:
-      - PORT=4002
-      - BOT_TOKEN=${TOKEN_QOM_ARAK}
-      
-  sheypoor-shz-isfhn:
-    <<: *common-config
-    container_name: sheypoor-shz-isfhn
-    command: node src/index.js
-    working_dir: /usr/src/app/Sheypoor/Sheypoor-SHZ-ISFHN
+    <<: *bot-config
+    container_name: shi-qom-arak
+    command: node Sheypoor-QOM-ARAK/src/index.js
     environment:
       - PORT=4001
-      - BOT_TOKEN=${TOKEN_SHZ_ISFHN}
+      - BOT_TOKEN=${TOKEN_QOM_ARAK}
 
-  sheypoor-thr-smnan:
-    <<: *common-config
-    container_name: sheypoor-thr-smnan
-    command: node src/index.js
-    working_dir: /usr/src/app/Sheypoor/Sheypoor-THR-SMNAN
+  # 3. SHIRAZ - ISFAHAN
+  sheypoor-shiraz-isfahan:
+    <<: *bot-config
+    container_name: shi-shiraz-isfahan
+    command: node Sheypoor-SHZ-ISFHN/src/index.js
     environment:
       - PORT=4002
-      - BOT_TOKEN=${TOKEN_THR_SMNAN}
+      - BOT_TOKEN=${TOKEN_SHIRAZ_ISFAHAN}
 
-  sheypoor-yazd-gilan:
-    <<: *common-config
-    container_name: sheypoor-yazd-gilan
-    command: node src/index.js
-    working_dir: /usr/src/app/Sheypoor/Sheypoor-YAZD-GILAN
+  # 4. TEHRAN - SEMNAN
+  sheypoor-tehran-semnan:
+    <<: *bot-config
+    container_name: shi-tehran-semnan
+    command: node Sheypoor-THR-SMNAN/src/index.js
     environment:
       - PORT=4003
+      - BOT_TOKEN=${TOKEN_TEHRAN_SEMNAN}
+
+  # 5. YAZD - GILAN
+  sheypoor-yazd-gilan:
+    <<: *bot-config
+    container_name: shi-yazd-gilan
+    command: node Sheypoor-YAZD-GILAN/src/index.js
+    environment:
+      - PORT=4004
       - BOT_TOKEN=${TOKEN_YAZD_GILAN}
