@@ -33,7 +33,7 @@ class Scraper {
     if (!this.browser) {
       this.browser = await puppeteer.launch({
         headless: "new",
-        executablePath: "/usr/bin/google-chrome",
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",

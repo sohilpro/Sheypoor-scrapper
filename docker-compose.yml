@@ -1,0 +1,63 @@
+version: "3.8"
+
+# تنظیمات مشترک برای جلوگیری از تکرار
+x-common-config: &common-config
+  build: .
+  restart: always
+  # ⚠️ حیاتی: افزایش حجم حافظه اشتراکی برای جلوگیری از کرش کروم
+  shm_size: "2gb"
+  env_file: .env
+  # محدودیت منابع (مثل max_memory_restart در pm2)
+  deploy:
+    resources:
+      limits:
+        memory: 600M # اگر رم بیشتر شد، کانتینر ریستارت میشه
+      reservations:
+        memory: 200M
+
+services:
+  # ================= SHEYPOOR BOTS =================
+  sheypoor-mazandaran:
+    <<: *common-config
+    container_name: sheypoor-mazandaran
+    command: node src/index.js
+    working_dir: /usr/src/app/Sheypoor/Sheypoor-MZNDRN
+    environment:
+      - PORT=4001
+      - BOT_TOKEN=${TOKEN_MAZANDARAN}
+
+  sheypoor-qom-arak:
+    <<: *common-config
+    container_name: sheypoor-qom-arak
+    command: node src/index.js
+    working_dir: /usr/src/app/Sheypoor/Sheypoor-QOM-ARAK
+    environment:
+      - PORT=4002
+      - BOT_TOKEN=${TOKEN_QOM_ARAK}
+      
+  sheypoor-shz-isfhn:
+    <<: *common-config
+    container_name: sheypoor-shz-isfhn
+    command: node src/index.js
+    working_dir: /usr/src/app/Sheypoor/Sheypoor-SHZ-ISFHN
+    environment:
+      - PORT=4001
+      - BOT_TOKEN=${TOKEN_SHZ_ISFHN}
+
+  sheypoor-thr-smnan:
+    <<: *common-config
+    container_name: sheypoor-thr-smnan
+    command: node src/index.js
+    working_dir: /usr/src/app/Sheypoor/Sheypoor-THR-SMNAN
+    environment:
+      - PORT=4002
+      - BOT_TOKEN=${TOKEN_THR_SMNAN}
+
+  sheypoor-yazd-gilan:
+    <<: *common-config
+    container_name: sheypoor-yazd-gilan
+    command: node src/index.js
+    working_dir: /usr/src/app/Sheypoor/Sheypoor-YAZD-GILAN
+    environment:
+      - PORT=4003
+      - BOT_TOKEN=${TOKEN_YAZD_GILAN}
