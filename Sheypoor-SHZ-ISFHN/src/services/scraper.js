@@ -14,8 +14,8 @@ const COMMON_USER_AGENT =
 const MIN_DELAY_MS = 120 * 1000; // 30 ثانیه
 const MAX_DELAY_MS = 300 * 1000; // 75 ثانیه
 
-const LOGIN_DELAY = 1.5 * 1000;
-const WAITING_FOR_GOTO = 3 * 1000;
+const LOGIN_DELAY = 1 * 1000;
+const WAITING_FOR_GOTO = 1.5 * 1000;
 
 // For Divar
 const ACCOUNT_LINK_XPATH = "//a[contains(., 'حساب من')]";
@@ -383,8 +383,37 @@ class Scraper {
       }
     } catch (err) {
       console.error("❌ scrapeAds main error:", err.message);
+
+      // 👇👇👇👇 [کد جدید را اینجا اضافه کنید] 👇👇👇👇
+      // تشخیص ارورهای مرگبار برای ریستارت شدن توسط PM2
+      if (
+        err.message.includes("Connection closed") ||
+        err.message.includes("not opened") ||
+        err.message.includes("ECONNRESET") ||
+        err.message.includes("Session closed")
+      ) {
+        console.error(
+          "☠️ Critical Browser Crash detected! Exiting process to let PM2 restart it..."
+        );
+
+        // تلاش برای بستن تمیز مرورگر (اگر هنوز باز باشد)
+        if (this.browser) {
+          try {
+            await this.browser.close();
+          } catch (e) {}
+        }
+
+        // بستن برنامه (PM2 بلافاصله دوباره آن را روشن می‌کند)
+        process.exit(1);
+      }
+      // 👆👆👆👆 [پایان کد اضافه شده] 👆👆👆👆
     } finally {
-      await page.close();
+      // اینجا چک میکنیم page وجود داشته باشد بعد میبندیم
+      if (page && !page.isClosed()) {
+        try {
+          await page.close();
+        } catch (e) {}
+      }
     }
 
     const result = Array.from(collected.values());

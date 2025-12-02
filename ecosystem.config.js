@@ -25,10 +25,11 @@ module.exports = {
       instances: 1,
       exec_mode: "fork",
       watch: false,
+      max_memory_restart: "450M", // ✅ محدودیت رم
+      restart_delay: 5000, // ✅ ۵ ثانیه استراحت قبل از شروع مجدد
       env: {
         ...sharedEnv,
         PORT: 4000,
-        // ✅ اینجا توکن مخصوص مازندران تبدیل میشه به BOT_TOKEN
         BOT_TOKEN: process.env.TOKEN_MAZANDARAN,
       },
     },
@@ -39,10 +40,12 @@ module.exports = {
       instances: 1,
       exec_mode: "fork",
       watch: false,
+      max_memory_restart: "450M",
+      restart_delay: 5000,
       env: {
         ...sharedEnv,
         PORT: 4001,
-        BOT_TOKEN: process.env.TOKEN_QOM_ARAK, // ✅ توکن قم و اراک
+        BOT_TOKEN: process.env.TOKEN_QOM_ARAK,
       },
     },
     {
@@ -52,10 +55,12 @@ module.exports = {
       instances: 1,
       exec_mode: "fork",
       watch: false,
+      max_memory_restart: "450M",
+      restart_delay: 5000,
       env: {
         ...sharedEnv,
         PORT: 4002,
-        BOT_TOKEN: process.env.TOKEN_SHIRAZ_ISFAHAN, // ✅ توکن شیراز و اصفهان
+        BOT_TOKEN: process.env.TOKEN_SHIRAZ_ISFAHAN,
       },
     },
     {
@@ -65,10 +70,12 @@ module.exports = {
       instances: 1,
       exec_mode: "fork",
       watch: false,
+      max_memory_restart: "450M",
+      restart_delay: 5000,
       env: {
         ...sharedEnv,
         PORT: 4003,
-        BOT_TOKEN: process.env.TOKEN_TEHRAN_SEMNAN, // ✅ توکن تهران و سمنان
+        BOT_TOKEN: process.env.TOKEN_TEHRAN_SEMNAN,
       },
     },
     {
@@ -78,10 +85,12 @@ module.exports = {
       instances: 1,
       exec_mode: "fork",
       watch: false,
+      max_memory_restart: "450M",
+      restart_delay: 5000,
       env: {
         ...sharedEnv,
         PORT: 4004,
-        BOT_TOKEN: process.env.TOKEN_YAZD_GILAN, // ✅ توکن یزد و گیلان
+        BOT_TOKEN: process.env.TOKEN_YAZD_GILAN,
       },
     },
   ],

@@ -66,7 +66,7 @@ class Scraper {
     try {
       const loaded = await loadCookies(cookiePage, siteUrl);
       console.log("Loaded cookies =>", loaded);
-await delay(LOGIN_DELAY)
+      await delay(LOGIN_DELAY);
       if (loaded) {
         await cookiePage.goto(siteUrl, { waitUntil: "networkidle2" });
 
@@ -383,8 +383,37 @@ await delay(LOGIN_DELAY)
       }
     } catch (err) {
       console.error("❌ scrapeAds main error:", err.message);
+
+      // 👇👇👇👇 [کد جدید را اینجا اضافه کنید] 👇👇👇👇
+      // تشخیص ارورهای مرگبار برای ریستارت شدن توسط PM2
+      if (
+        err.message.includes("Connection closed") ||
+        err.message.includes("not opened") ||
+        err.message.includes("ECONNRESET") ||
+        err.message.includes("Session closed")
+      ) {
+        console.error(
+          "☠️ Critical Browser Crash detected! Exiting process to let PM2 restart it..."
+        );
+
+        // تلاش برای بستن تمیز مرورگر (اگر هنوز باز باشد)
+        if (this.browser) {
+          try {
+            await this.browser.close();
+          } catch (e) {}
+        }
+
+        // بستن برنامه (PM2 بلافاصله دوباره آن را روشن می‌کند)
+        process.exit(1);
+      }
+      // 👆👆👆👆 [پایان کد اضافه شده] 👆👆👆👆
     } finally {
-      await page.close();
+      // اینجا چک میکنیم page وجود داشته باشد بعد میبندیم
+      if (page && !page.isClosed()) {
+        try {
+          await page.close();
+        } catch (e) {}
+      }
     }
 
     const result = Array.from(collected.values());
