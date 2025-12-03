@@ -10,7 +10,7 @@ const path = require("path");
 const { Markup } = require("telegraf");
 
 const app = express();
-const PORT = process.env.PORT || 4003;
+const PORT = process.env.PORT || 4004;
 
 const PROVINCES = config.TARGET_LOCATIONS;
 const DELAY_PER_PROVINCE = config.SCRAPING_DELAY_PER_PROVINCE_MS || 15000;
@@ -201,7 +201,7 @@ async function processAds(ads, province) {
         `🚨 [${province.name}][${ad.site}] Crashed car found: ${ad.title}`
       );
 
-      const phone = await scraper.getPhoneNumber(ad.url);
+      // const phone = await scraper.getPhoneNumber(ad.url);
       const adData = await scraper.getAdData(ad.url);
 
       //       const message = `
@@ -223,7 +223,6 @@ async function processAds(ads, province) {
 🌍 *استان:* ${province.name}
 🚗 *سایت:* ${ad.site.toUpperCase()}
 
-📞 *تلفن:* \`${phone || "نامشخص"}\`
 💡 *علت تشخیص:* _${analysis.reason}_
 ──────────────
 🔗 [مشاهده آگهی در شیپور](${ad.url})
@@ -326,7 +325,7 @@ app.get("/status", (req, res) => {
 app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
   // ⬅️ فراخوانی در ابتدای برنامه
-  launchTelegramBot();
+  // launchTelegramBot();
 
   await scraper.initBrowser();
 
@@ -346,27 +345,27 @@ app.listen(PORT, async () => {
   // ============================================================
   // 🔥 لاگین هوشمند بعد از ریستارت 🔥
   // ============================================================
-  const activePhonePath = path.join(__dirname, "../active_phone.txt"); // مسیر را چک کنید
-  let autoPhone = null;
+  // const activePhonePath = path.join(__dirname, "../active_phone.txt"); // مسیر را چک کنید
+  // let autoPhone = null;
 
-  // خواندن شماره فعال (اگر وجود داشت)
-  if (fs.existsSync(activePhonePath)) {
-    autoPhone = fs.readFileSync(activePhonePath, "utf-8").trim();
-    console.log(`ℹ️ Found active phone config: ${autoPhone}`);
-  }
+  // // خواندن شماره فعال (اگر وجود داشت)
+  // if (fs.existsSync(activePhonePath)) {
+  //   autoPhone = fs.readFileSync(activePhonePath, "utf-8").trim();
+  //   console.log(`ℹ️ Found active phone config: ${autoPhone}`);
+  // }
 
-  // تلاش برای لاگین (اگر کوکی نباشد، از autoPhone استفاده می‌کند)
-  try {
-    // آدرس سایت را بر اساس پروژه تنظیم کن
-    const siteUrl = config.SHEYPOOR_URL;
+  // // تلاش برای لاگین (اگر کوکی نباشد، از autoPhone استفاده می‌کند)
+  // try {
+  //   // آدرس سایت را بر اساس پروژه تنظیم کن
+  //   const siteUrl = config.SHEYPOOR_URL;
 
-    // فراخوانی متد لاگین:
-    // اگر کوکی باشد -> با کوکی می‌رود.
-    // اگر کوکی نباشد (که الان پاک کردیم) -> از autoPhone استفاده می‌کند.
-    await scraper.login(siteUrl, autoPhone, telegram);
-  } catch (e) {
-    console.log("⚠️ Login process finished with warnings.");
-  }
+  //   // فراخوانی متد لاگین:
+  //   // اگر کوکی باشد -> با کوکی می‌رود.
+  //   // اگر کوکی نباشد (که الان پاک کردیم) -> از autoPhone استفاده می‌کند.
+  //   await scraper.login(siteUrl, autoPhone, telegram);
+  // } catch (e) {
+  //   console.log("⚠️ Login process finished with warnings.");
+  // }
 
   await redisManager.connect();
   runScraperCycle(); // شروع Job چرخشی
